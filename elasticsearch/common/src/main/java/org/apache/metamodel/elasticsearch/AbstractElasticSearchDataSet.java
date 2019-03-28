@@ -62,7 +62,7 @@ public abstract class AbstractElasticSearchDataSet extends AbstractDataSet {
     }
 
     protected abstract void closeNow();
-    
+
     @Override
     protected void finalize() throws Throwable {
         if (!_closed.get()) {
@@ -106,7 +106,7 @@ public abstract class AbstractElasticSearchDataSet extends AbstractDataSet {
         _hitIndex = 0;
         return next();
     }
-    
+
     protected abstract SearchResponse scrollSearchResponse(final String scrollId) throws IOException;
 
     @Override
@@ -115,7 +115,7 @@ public abstract class AbstractElasticSearchDataSet extends AbstractDataSet {
             return null;
         }
 
-        final Map<String, Object> source = _currentHit.getSource();
+        final Map<String, Object> source = _currentHit.getSourceAsMap();
         final String documentId = _currentHit.getId();
         return ElasticSearchUtils.createRow(source, documentId, getHeader());
     }
