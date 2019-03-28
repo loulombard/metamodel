@@ -35,6 +35,7 @@ import org.apache.http.entity.ByteArrayEntity;
 import org.apache.http.entity.ContentType;
 import org.elasticsearch.action.ActionRequest;
 import org.elasticsearch.action.ActionResponse;
+import org.elasticsearch.action.admin.indices.delete.DeleteIndexRequest;
 import org.elasticsearch.action.admin.indices.get.GetIndexRequest;
 import org.elasticsearch.action.admin.indices.mapping.put.PutMappingRequest;
 import org.elasticsearch.action.bulk.BulkRequest;
@@ -44,6 +45,7 @@ import org.elasticsearch.action.main.MainRequest;
 import org.elasticsearch.action.search.ClearScrollRequest;
 import org.elasticsearch.action.search.SearchScrollRequest;
 import org.elasticsearch.client.Request;
+import org.elasticsearch.client.RequestOptions;
 import org.elasticsearch.client.Response;
 import org.elasticsearch.client.RestClient;
 import org.elasticsearch.client.RestHighLevelClient;
@@ -55,7 +57,7 @@ public class ElasticSearchRestClient extends RestHighLevelClient {
     private static final Logger logger = LoggerFactory.getLogger(ElasticSearchRestClient.class);
 
     public ElasticSearchRestClient(final RestClient restClient) {
-        super(restClient);
+        super(restClient, RestClient::close, Collections.emptyList());
     }
 
     public final boolean refresh(final String indexName, final Header... headers) {
@@ -69,16 +71,18 @@ public class ElasticSearchRestClient extends RestHighLevelClient {
     }
 
     private static Request refresh(final String indexName) {
-        return new Request(HttpPost.METHOD_NAME, "/" + indexName + "/_refresh", Collections.emptyMap(), null);
+        return new Request(HttpPost.METHOD_NAME, "/" + indexName + "/_refresh");
     }
 
     public final boolean delete(final String indexName, final Header... headers) throws IOException {
-        return performRequest(new MainRequest(), request -> delete(indexName),
-                ElasticSearchRestClient::convertResponse, emptySet(), headers);
+        RequestOptions.Builder builder = RequestOptions.DEFAULT.toBuilder();
+        for(Header hdr: headers) builder.addHeader(hdr.getName(), hdr.getValue());
+        return performRequest(new DeleteIndexRequest(), request -> delete(indexName), builder.build(),
+                ElasticSearchRestClient::convertResponse, emptySet());
     }
 
     private static Request delete(final String indexName) {
-        return new Request(HttpDelete.METHOD_NAME, "/" + indexName, Collections.emptyMap(), null);
+        return new Request(HttpDelete.METHOD_NAME, "/" + indexName);
     }
 
     public Set<Entry<String, Object>> getMappings(final String indexName, final Header... headers) throws IOException {
@@ -87,7 +91,7 @@ public class ElasticSearchRestClient extends RestHighLevelClient {
     }
 
     private static Request getMappings(final String indexName) {
-        return new Request(HttpGet.METHOD_NAME, "/" + indexName, Collections.emptyMap(), null);
+        return new Request(HttpGet.METHOD_NAME, "/" + indexName);
     }
 
     public final boolean createMapping(final PutMappingRequest putMappingRequest, final Header... headers)
@@ -100,7 +104,7 @@ public class ElasticSearchRestClient extends RestHighLevelClient {
         final String endpoint = "/" + putMappingRequest.indices()[0] + "/_mapping/" + putMappingRequest.type();
         final ByteArrayEntity entity = new ByteArrayEntity(putMappingRequest.source().getBytes(),
                 ContentType.APPLICATION_JSON);
-        return new Request(HttpPut.METHOD_NAME, endpoint, Collections.emptyMap(), entity);
+        return new Request(HttpPut.METHOD_NAME, endpoint);
     }
 
     // Carbon copy of RestHighLevelClient#convertExistsResponse(Response) method, which is unaccessible from this class.
